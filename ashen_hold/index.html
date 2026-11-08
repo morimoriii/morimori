@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>灰燼の砦 — 戦術カード・ダンジョン</title>
+<style>
+  :root{--bg:#17110e;--panel:#241a15;--line:#4a3628;--txt:#f1e4d0;--dim:#a8957d;--gold:#e0b14a;--red:#d9472b;--blue:#4aa3d9;--green:#5fbf6a}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(circle at 50% 0,#3a1f12,#17110e 60%);color:var(--txt);font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:14px}
+  header{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  header h1{margin:0;font-size:22px;letter-spacing:3px;color:var(--gold);text-shadow:0 0 8px #d9472b}
+  header .sp{flex:1}
+  button{background:#3b2a1f;color:var(--txt);border:1px solid #7a5a3e;border-radius:6px;padding:6px 10px;font:inherit;cursor:pointer}
+  button:hover{background:#4d3727}
+  button.primary{background:#8a3a1c;border-color:var(--gold)}
+  button:disabled{opacity:.4;cursor:default}
+  main{display:flex;gap:10px;padding:10px;flex-wrap:wrap}
+  #boardWrap{flex:1 1 520px;min-width:300px;background:#120c09;border:1px solid var(--line);border-radius:10px;padding:6px;position:relative}
+  #board{width:100%;height:auto;display:block}
+  #prompt{padding:6px 8px;min-height:38px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line)}
+  #prompt .msg{flex:1;color:var(--gold)}
+  aside{flex:0 1 300px;min-width:260px;display:flex;flex-direction:column;gap:8px}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px}
+  .box h3{margin:0 0 6px;font-size:13px;color:var(--dim);letter-spacing:1px}
+  .hero{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .hero.ex{opacity:.35}
+  .bar{height:7px;background:#3a2a20;border-radius:4px;overflow:hidden;flex:1}
+  .bar>i{display:block;height:100%;background:var(--green)}
+  .small{font-size:12px;color:var(--dim)}
+  #order .o{display:flex;justify-content:space-between;padding:2px 6px;border-radius:4px}
+  #order .o.cur{background:#5a2a14;color:#fff}
+  #order .o.done{opacity:.4}
+  #log{max-height:220px;overflow:auto;font-size:12px;line-height:1.5}
+  #log div{border-bottom:1px dotted #3a2a20}
+  #cards{padding:0 10px 20px}
+  .cardrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .rowtitle{margin:6px 0;font-weight:bold;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .card{width:150px;background:linear-gradient(#3a2a1e,#2a1e16);border:2px solid #6b4e36;border-radius:10px;padding:6px;position:relative;user-select:none}
+  .card .nm{font-weight:bold;font-size:13px;text-align:center;padding-right:22px}
+  .card .ini{position:absolute;right:4px;top:4px;background:var(--gold);color:#2a1a0e;font-weight:bold;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px}
+  .card .half{margin-top:5px;padding:5px;border-radius:6px;background:#1c140f;min-height:44px;font-size:12px;border:1px solid transparent}
+  .card .half.lost::after{content:"✖消滅";float:right;color:var(--red);font-size:11px}
+  .card.sel{border-color:var(--gold);box-shadow:0 0 10px #e0b14a88}
+  .card.lead::before{content:"先導";position:absolute;left:-2px;top:-10px;background:var(--gold);color:#2a1a0e;font-size:10px;padding:1px 5px;border-radius:5px;font-weight:bold}
+  .card.click{cursor:pointer}
+  .card.click:hover{transform:translateY(-2px)}
+  .half.pick{cursor:pointer;border-color:var(--gold)}
+  .half.pick:hover{background:#4a2c18}
+  .half.used{opacity:.3}
+  .alt{display:block;margin-top:3px;font-size:10px;padding:2px 4px}
+  .card.dead{opacity:.35}
+  svg text{pointer-events:none;font-family:inherit}
+  .hex{stroke:#3d2c20;stroke-width:1.5}
+  .hex.hl{fill:#2f5a2f!important;cursor:pointer}
+  .hex.hl:hover{fill:#4b8a4b!important}
+  .unit.tg{cursor:pointer}
+  .unit.tg circle.ring{stroke:#ff5a3c;stroke-width:4;stroke-dasharray:6 4;animation:spin 2s linear infinite}
+  .unit.ht circle.ring{stroke:#5fbf6a;stroke-width:4;stroke-dasharray:6 4}
+  .unit.active circle.ring{stroke:var(--gold);stroke-width:4}
+  @keyframes spin{to{stroke-dashoffset:-20}}
+  .floater{animation:up 1.1s ease-out forwards;font-weight:bold;font-size:18px;paint-order:stroke;stroke:#000;stroke-width:3px}
+  @keyframes up{from{transform:translateY(0);opacity:1}to{transform:translateY(-30px);opacity:0}}
+  #modal{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;z-index:9;padding:12px}
+  #modal[hidden]{display:none}
+  #modal .in{background:var(--panel);border:2px solid var(--gold);border-radius:12px;max-width:620px;max-height:90vh;overflow:auto;padding:16px 20px;line-height:1.7}
+  #modal h2{color:var(--gold);margin-top:0}
+  .mon{display:flex;justify-content:space-between;gap:6px;font-size:12px;margin-bottom:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>灰燼の砦</h1>
+  <span id="roundInfo" class="small"></span>
+  <span class="sp"></span>
+  <button id="helpBtn">遊び方</button>
+  <button id="restartBtn">最初から</button>
+</header>
+<main>
+  <section id="boardWrap">
+    <svg id="board"></svg>
+    <div id="prompt"></div>
+  </section>
+  <aside>
+    <div class="box"><h3>パーティ</h3><div id="party"></div></div>
+    <div class="box"><h3>行動順</h3><div id="order"></div></div>
+    <div class="box"><h3>敵</h3><div id="monInfo"></div></div>
+    <div class="box"><h3>ログ</h3><div id="log"></div></div>
+  </aside>
+</main>
+<section id="cards"></section>
+<div id="modal" hidden><div class="in" id="modalIn"></div></div>
+
+<script>
+"use strict";
+/* ================= データ ================= */
+const MAP = [
+  "  .......    ",
+  " ....o....   ",
+  "..1....g..o. ",
+  "......o..a...",
+  ".2..o...G....",
+  "......o..A...",
+  "..........g. ",
+  " ....o....   ",
+  "  .......    ",
+];
+// アクション: move{v,jump} attack{v,range,targets} heal{v,range} shield{v}
+const M=(v,jump)=>({t:'move',v,jump}), A=(v,range=1,targets=1)=>({t:'attack',v,range,targets}),
+      H=(v,range=0)=>({t:'heal',v,range}), SH=v=>({t:'shield',v});
+const HEROES = [
+  {id:'h1',name:'ガルド',cls:'鉄壁の番人',icon:'🛡',color:'#c0602c',hp:12,start:'1',cards:[
+    {n:'盾撃',i:15,top:[A(3)],bot:[M(3)]},
+    {n:'薙ぎ払い',i:30,top:[A(2,1,2)],bot:[M(4)]},
+    {n:'鉄の構え',i:10,top:[SH(2)],bot:[M(2),H(2)]},
+    {n:'突撃',i:45,top:[M(3),A(3)],bot:[A(2)]},
+    {n:'大地割り',i:70,top:[A(5,1,6)],topLost:true,bot:[SH(1),M(2)]},
+    {n:'鼓舞の叫び',i:25,top:[H(3,3)],bot:[M(3)]},
+    {n:'重撃',i:60,top:[A(4)],bot:[M(3)]},
+    {n:'守護の誓い',i:20,top:[SH(3)],topLost:true,bot:[A(2)]},
+    {n:'跳躍斬り',i:55,top:[M(3,true),A(2)],bot:[M(3)]},
+    {n:'不屈',i:80,top:[H(5)],topLost:true,bot:[M(4)]},
+  ]},
+  {id:'h2',name:'リラ',cls:'影の射手',icon:'🏹',color:'#4a8fd0',hp:8,start:'2',cards:[
+    {n:'速射',i:12,top:[A(2,4)],bot:[M(3)]},
+    {n:'二連矢',i:35,top:[A(2,3,2)],bot:[M(4)]},
+    {n:'影歩き',i:8,top:[M(5,true)],bot:[A(1,3)]},
+    {n:'狙撃',i:75,top:[A(6,5)],topLost:true,bot:[M(2)]},
+    {n:'毒矢',i:40,top:[A(3,3)],bot:[H(2)]},
+    {n:'矢の雨',i:85,top:[A(3,4,3)],topLost:true,bot:[M(3)]},
+    {n:'退避射撃',i:22,top:[A(2,3),M(2)],bot:[M(3)]},
+    {n:'癒しの薬草',i:50,top:[H(4,2)],bot:[M(3)]},
+    {n:'急所狙い',i:65,top:[A(4,2)],bot:[M(2),A(1,3)]},
+    {n:'煙幕',i:18,top:[SH(2)],bot:[M(4,true)],botLost:false},
+  ]},
+];
+const MONSTERS = {
+  ghoul:{name:'屍喰い',icon:'👹',normal:{hp:6,move:2,atk:2,range:1,shield:0},elite:{hp:9,move:2,atk:3,range:1,shield:1},
+    deck:[{i:14,move:1,atk:-1},{i:29,move:0,atk:0},{i:48,move:-1,atk:1},{i:61,move:0,atk:1},
+          {i:72,move:1,atk:0},{i:32,move:null,atk:2},{i:7,move:0,atk:-1,shield:1},{i:44,move:0,atk:0,heal:2}]},
+  archer:{name:'骨弓兵',icon:'💀',normal:{hp:4,move:2,atk:2,range:3,shield:0},elite:{hp:6,move:2,atk:3,range:4,shield:0},
+    deck:[{i:16,move:1,atk:-1},{i:31,move:0,atk:0},{i:44,move:-1,atk:1,range:1},{i:56,move:null,atk:1,range:1},
+          {i:68,move:1,atk:0},{i:23,move:0,atk:0,shield:1},{i:77,move:-1,atk:2},{i:39,move:2,atk:-1}]},
+};
+const MON_CHARS={g:['ghoul',false],G:['ghoul',true],a:['archer',false],A:['archer',true]};
+const MOD_BASE=[0,0,0,0,0,0,1,1,1,1,1,-1,-1,-1,-1,-1,2,-2,'x2','miss'];
+
+/* ================= ヘックス ================= */
+const HEX=30, SQ3=Math.sqrt(3);
+const key=(q,r)=>q+','+r;
+const DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+const pix=(q,r)=>({x:HEX*SQ3*(q+r/2),y:HEX*1.5*r});
+const dist=(a,b)=>{const dq=a.q-b.q,dr=a.r-b.r;return (Math.abs(dq)+Math.abs(dr)+Math.abs(dq+dr))/2;};
+function bfs(starts,maxD,canPass){
+  const seen=new Map(),q=[];
+  for(const s of starts){seen.set(key(s.q,s.r),0);q.push(s);}
+  while(q.length){
+    const c=q.shift(),d=seen.get(key(c.q,c.r));
+    if(d>=maxD)continue;
+    for(const [dq,dr] of DIRS){
+      const n={q:c.q+dq,r:c.r+dr},k=key(n.q,n.r);
+      if(seen.has(k))continue;
+      const t=S.tiles.get(k); if(!t||!canPass(t))continue;
+      seen.set(k,d+1); q.push(n);
+    }
+  }
+  return seen;
+}
+
+/* ================= 状態 ================= */
+let S;
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;};
+function newModDeck(){return {draw:shuffle([...MOD_BASE]),discard:[],needShuffle:false};}
+function drawMod(d){
+  if(!d.draw.length){d.draw=shuffle(d.discard);d.discard=[];}
+  const c=d.draw.pop(); d.discard.push(c);
+  if(c==='x2'||c==='miss')d.needShuffle=true;
+  return c;
+}
+const modTxt=c=>c==='x2'?'×2':c==='miss'?'ミス':(c>=0?'+'+c:''+c);
+const applyMod=(v,c)=>c==='x2'?v*2:c==='miss'?0:Math.max(0,v+c);
+
+function init(){
+  S={round:0,phase:'select',tiles:new Map(),heroes:[],monsters:[],mdecks:{},heroMods:newModDeck(),monMods:newModDeck(),
+     order:[],turnIdx:-1,active:null,turn:null,pending:null,log:[],floaters:[],busy:false};
+  let mid=0;
+  MAP.forEach((row,r)=>[...row].forEach((ch,c)=>{
+    if(ch===' ')return;
+    const q=c-((r-(r&1))/2);
+    S.tiles.set(key(q,r),{q,r,obst:ch==='o'});
+    const hd=HEROES.find(h=>h.start===ch);
+    if(hd)S.heroes.push({...hd,q,r,maxHp:hd.hp,hand:hd.cards.map((c,ix)=>({...c,uid:hd.id+ix})),discard:[],lost:[],
+      selected:[],exhausted:false,shield:0,longRest:false,init:0});
+    if(MON_CHARS[ch]){const [type,elite]=MON_CHARS[ch],st=MONSTERS[type][elite?'elite':'normal'];
+      S.monsters.push({id:'m'+(++mid),num:mid,type,elite,q,r,hp:st.hp,maxHp:st.hp,shield:0});}
+  }));
+  for(const t in MONSTERS)S.mdecks[t]={draw:shuffle([...MONSTERS[t].deck]),cur:null};
+  log('灰燼の砦へ踏み込んだ。すべての敵を倒せ。');
+  startSelect();
+}
+const alive=()=>S.monsters.filter(m=>m.hp>0);
+const liveHeroes=()=>S.heroes.filter(h=>!h.exhausted);
+function unitAt(q,r){return liveHeroes().find(h=>h.q===q&&h.r===r)||alive().find(m=>m.q===q&&m.r===r);}
+function log(t){S.log.unshift(t);if(S.log.length>120)S.log.pop();}
+function floater(u,text,color){const f={id:Math.random(),q:u.q,r:u.r,text,color};S.floaters.push(f);
+  setTimeout(()=>{S.floaters=S.floaters.filter(x=>x!==f);render();},1100);}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ================= ラウンド ================= */
+function startSelect(){
+  S.round++; S.phase='select'; S.order=[]; S.turnIdx=-1; S.active=null; S.pending=null;
+  for(const h of liveHeroes()){
+    h.selected=[]; h.longRest=false;
+    if(h.hand.length<2&&h.discard.length<2){exhaust(h,'手札が尽きた');continue;}
+    if(h.hand.length<2){h.longRest=true;log(`${h.name}は手札が足りず、長休憩を強いられる。`);}
+  }
+  if(checkEnd())return;
+  render();
+}
+function exhaust(h,why){h.exhausted=true;log(`☠ ${h.name}は疲弊した（${why}）。`);}
+function toggleSelect(h,card){
+  if(h.longRest)return;
+  const i=h.selected.indexOf(card);
+  if(i>=0)h.selected.splice(i,1);
+  else if(h.selected.length<2)h.selected.push(card);
+  else{h.selected.shift();h.selected.push(card);}
+  render();
+}
+function startRound(){
+  for(const h of liveHeroes()){
+    h.init=h.longRest?99:h.selected[0].i;
+    if(!h.longRest)h.hand=h.hand.filter(c=>!h.selected.includes(c));
+  }
+  const ent=liveHeroes().map(h=>({kind:'hero',ref:h,init:h.init}));
+  for(const t of new Set(alive().map(m=>m.type))){
+    const d=S.mdecks[t]; if(!d.draw.length)d.draw=shuffle([...MONSTERS[t].deck]);
+    d.cur=d.draw.pop(); ent.push({kind:'mon',type:t,init:d.cur.i});
+  }
+  ent.sort((a,b)=>a.init-b.init||(a.kind==='hero'?-1:1));
+  S.order=ent; S.turnIdx=-1; S.phase='play';
+  log(`―― ラウンド ${S.round} 開始 ――`);
+  nextTurn();
+}
+function endRound(){
+  for(const h of S.heroes)h.shield=0;
+  for(const m of S.monsters)m.shield=0;
+  for(const t in S.mdecks)S.mdecks[t].cur=null;
+  for(const d of [S.heroMods,S.monMods])if(d.needShuffle){d.draw=shuffle([...d.draw,...d.discard]);d.discard=[];d.needShuffle=false;}
+  startSelect();
+}
+function checkEnd(){
+  if(S.phase==='over')return true;
+  if(!alive().length){S.phase='over';log('🏆 勝利！砦は静寂を取り戻した。');render();
+    showModal(`<h2>🏆 勝利</h2><p>ラウンド ${S.round} で全ての敵を討ち果たした。</p><button class="primary" onclick="hideModal();init()">もう一度</button>`);return true;}
+  if(!liveHeroes().length){S.phase='over';log('💀 全滅…');render();
+    showModal(`<h2>💀 敗北</h2><p>パーティは疲弊し、灰に還った。</p><button class="primary" onclick="hideModal();init()">再挑戦</button>`);return true;}
+  return false;
+}
+async function nextTurn(){
+  if(checkEnd())return;
+  S.turnIdx++;
+  if(S.turnIdx>=S.order.length){endRound();return;}
+  const e=S.order[S.turnIdx];
+  if(e.kind==='hero'){
+    if(e.ref.exhausted)return nextTurn();
+    S.active=e.ref;
+    if(e.ref.longRest)return startLongRest(e.ref);
+    S.turn={done:0,uses:[]}; S.pending=null;
+    log(`▶ ${e.ref.name}の手番`);
+    render();
+  }else{
+    S.active=null; S.busy=true; render();
+    await monsterTurn(e.type);
+    S.busy=false;
+    nextTurn();
+  }
+}
+
+/* ================= 英雄の手番 ================= */
+function startLongRest(h){
+  log(`▶ ${h.name}は長休憩：HP+2、捨て札から1枚消滅させて手札に戻す。`);
+  heal(h,2);
+  S.pending={type:'rest'}; render();
+}
+function restLose(card){
+  const h=S.active;
+  h.discard=h.discard.filter(c=>c!==card); h.lost.push(card);
+  h.hand.push(...h.discard); h.discard=[];
+  log(`${h.name}は「${card.n}」を消滅させた。`);
+  S.pending=null; S.active=null; nextTurn();
+}
+function chooseHalf(card,half,alt){
+  const h=S.active,t=S.turn;
+  if(S.pending||!canPickHalf(card,half))return;
+  t.uses.push({card,half,alt});
+  t.queue=alt?[half==='top'?A(2):M(2)]:card[half].map(a=>({...a}));
+  processQueue();
+}
+function canPickHalf(card,half){
+  const t=S.turn; if(!t||t.done>=2)return false;
+  if(t.uses.length===1){const u=t.uses[0];return u.card!==card&&u.half!==half;}
+  return t.uses.length===0;
+}
+function processQueue(){
+  const h=S.active,t=S.turn;
+  S.pending=null;
+  while(t.queue.length){
+    const a=t.queue.shift();
+    if(a.t==='shield'){h.shield+=a.v;log(`${h.name}はシールド${a.v}を得た。`);floater(h,'🛡'+a.v,'#9cf');continue;}
+    if(a.t==='move'){
+      const opts=heroMoveOptions(h,a);
+      if(!opts.size)continue;
+      S.pending={type:'move',a,opts};break;
+    }
+    if(a.t==='attack'){
+      S.pending={type:'attack',a,left:Math.min(a.targets,99),hit:new Set()};
+      if(!attackTargets().length){S.pending=null;continue;}
+      break;
+    }
+    if(a.t==='heal'){
+      if(a.range===0){heal(h,a.v);continue;}
+      S.pending={type:'heal',a};break;
+    }
+  }
+  if(!S.pending){
+    t.done++;
+    if(t.done>=2)return endHeroTurn();
+  }
+  render();
+}
+function heroMoveOptions(h,a){
+  const pass=a.jump?(()=>true):(t=>!t.obst&&!alive().some(m=>m.q===t.q&&m.r===t.r));
+  const seen=bfs([h],a.v,pass),res=new Map();
+  for(const [k,d] of seen){if(d===0)continue;const t=S.tiles.get(k);if(!t.obst&&!unitAt(t.q,t.r))res.set(k,d);}
+  return res;
+}
+function attackTargets(){
+  const p=S.pending,h=S.active;
+  return alive().filter(m=>!p.hit.has(m)&&dist(h,m)<=p.a.range);
+}
+function healTargets(){return liveHeroes().filter(x=>dist(S.active,x)<=S.pending.a.range);}
+function clickHex(k){
+  if(S.pending?.type!=='move'||!S.pending.opts.has(k))return;
+  const t=S.tiles.get(k); S.active.q=t.q; S.active.r=t.r;
+  processQueue();
+}
+function clickUnit(u){
+  const p=S.pending,h=S.active; if(!p)return;
+  if(p.type==='attack'&&u.type&&attackTargets().includes(u)){
+    const c=drawMod(S.heroMods); const raw=applyMod(p.a.v,c); const dmg=Math.max(0,raw-u.shield);
+    u.hp-=dmg; p.hit.add(u); p.left--;
+    log(`${h.name}→${monName(u)}：攻撃${p.a.v} 修正${modTxt(c)}${u.shield?` シールド${u.shield}`:''} ⇒ ${dmg}ダメージ`);
+    floater(u,c==='miss'?'ミス':'-'+dmg,'#ff6a4a');
+    if(u.hp<=0)log(`✝ ${monName(u)}を倒した！`);
+    if(!alive().length){render();return checkEnd();}
+    if(p.left<=0||!attackTargets().length)return processQueue();
+    render();
+  }else if(p.type==='heal'&&u.cls&&healTargets().includes(u)){
+    heal(u,p.a.v); processQueue();
+  }
+}
+function heal(u,v){const b=u.hp;u.hp=Math.min(u.maxHp,u.hp+v);log(`${u.name||monName(u)}はHPを${u.hp-b}回復。`);floater(u,'+'+(u.hp-b),'#7f7');}
+function skipAction(){if(!S.pending||S.pending.type==='rest')return;processQueue();}
+function endHeroTurn(){
+  const h=S.active;
+  for(const u of S.turn.uses){
+    const lost=!u.alt&&u.card[u.half+'Lost'];
+    (lost?h.lost:h.discard).push(u.card);
+    if(lost)log(`「${u.card.n}」は消滅した。`);
+  }
+  h.selected=[]; S.turn=null; S.pending=null; S.active=null;
+  nextTurn();
+}
+
+/* ================= モンスターAI ================= */
+const monName=m=>`${m.elite?'精鋭':''}${MONSTERS[m.type].name}${m.num}`;
+function monStats(m){
+  const base=MONSTERS[m.type][m.elite?'elite':'normal'],c=S.mdecks[m.type].cur||{};
+  return {move:c.move===null?0:Math.max(0,base.move+(c.move||0)),atk:c.atk===null?null:Math.max(0,base.atk+(c.atk||0)),
+          range:base.range+(base.range>1?(c.range||0):0),shield:base.shield+(c.shield||0),heal:c.heal||0,noMove:c.move===null};
+}
+async function monsterTurn(type){
+  const list=alive().filter(m=>m.type===type).sort((a,b)=>(b.elite-a.elite)||a.num-b.num);
+  for(const m of list){
+    if(m.hp<=0)continue;
+    if(!liveHeroes().length)return;
+    const st=monStats(m); m.shield=st.shield;
+    S.activeMon=m; render(); await sleep(350);
+    if(st.heal&&m.hp<m.maxHp){heal(m,st.heal);render();await sleep(300);}
+    const pass=t=>!t.obst&&!liveHeroes().some(h=>h.q===t.q&&h.r===t.r);
+    const free=t=>!t.obst&&(!unitAt(t.q,t.r)||(t.q===m.q&&t.r===m.r));
+    // フォーカス：攻撃可能地点まで最も近い英雄（同距離ならイニシアチブの早い方）
+    let best=null;
+    for(const h of liveHeroes()){
+      const goals=[...S.tiles.values()].filter(t=>free(t)&&dist(t,h)<=st.range);
+      if(!goals.length)continue;
+      const dg=bfs(goals,99,pass), d=dg.get(key(m.q,m.r));
+      if(d===undefined)continue;
+      if(!best||d<best.d||(d===best.d&&h.init<best.h.init))best={h,d,dg};
+    }
+    if(!best){log(`${monName(m)}は標的を見つけられない。`);continue;}
+    if(!st.noMove&&st.move>0&&best.d>0){
+      const reach=bfs([m],st.move,t=>!t.obst&&!liveHeroes().some(h=>h.q===t.q&&h.r===t.r));
+      let pick=null;
+      for(const [k,d] of reach){const t=S.tiles.get(k);if(!free(t))continue;const g=best.dg.get(k)??999;
+        if(!pick||g<pick.g||(g===pick.g&&d<pick.d))pick={t,g,d};}
+      if(pick&&(pick.t.q!==m.q||pick.t.r!==m.r)){m.q=pick.t.q;m.r=pick.t.r;log(`${monName(m)}が${pick.d}マス移動。`);render();await sleep(350);}
+    }
+    if(st.atk!==null&&dist(m,best.h)<=st.range){
+      const h=best.h,c=drawMod(S.monMods),dmg=Math.max(0,applyMod(st.atk,c)-h.shield);
+      h.hp-=dmg; floater(h,c==='miss'?'ミス':'-'+dmg,'#ff6a4a');
+      log(`${monName(m)}→${h.name}：攻撃${st.atk} 修正${modTxt(c)}${h.shield?` シールド${h.shield}`:''} ⇒ ${dmg}ダメージ`);
+      if(h.hp<=0){h.hp=0;exhaust(h,'HPが0になった');}
+      render(); await sleep(450);
+    }
+  }
+  S.activeMon=null;
+}
+
+/* ================= 描画 ================= */
+const $=id=>document.getElementById(id);
+const actTxt=a=>a.t==='move'?`${a.jump?'跳躍':'移動'} ${a.v}`:a.t==='attack'?`攻撃 ${a.v}${a.range>1?` 射程${a.range}`:''}${a.targets>1?(a.targets>=6?' 隣接全員':` 対象${a.targets}`):''}`:a.t==='heal'?`回復 ${a.v}${a.range?` 射程${a.range}`:' 自身'}`:`シールド ${a.v}`;
+function cardHTML(c,opt={}){
+  const half=h=>{
+    const pick=opt.play&&canPickHalf(c,h)&&!S.pending;
+    const used=opt.play&&S.turn.uses.some(u=>u.card===c&&u.half===h);
+    return `<div class="half ${c[h+'Lost']?'lost':''} ${pick?'pick':''} ${used?'used':''}" ${pick?`data-half="${h}" data-uid="${c.uid}"`:''}>
+      ${c[h].map(actTxt).join('<br>')}
+      ${pick?`<button class="alt" data-alt="${h}" data-uid="${c.uid}">代わりに ${h==='top'?'攻撃2':'移動2'}</button>`:''}</div>`;
+  };
+  return `<div class="card ${opt.cls||''}" data-uid="${c.uid}"><div class="nm">${c.n}</div><div class="ini">${c.i}</div>${half('top')}${half('bot')}</div>`;
+}
+function render(){
+  $('roundInfo').textContent=`ラウンド ${S.round}　${S.phase==='select'?'— カード選択':S.phase==='play'?'— 行動':''}`;
+  renderBoard(); renderSide(); renderCards(); renderPrompt();
+}
+function renderBoard(){
+  const svg=$('board'); let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+  for(const t of S.tiles.values()){const p=pix(t.q,t.r);minx=Math.min(minx,p.x);maxx=Math.max(maxx,p.x);miny=Math.min(miny,p.y);maxy=Math.max(maxy,p.y);}
+  svg.setAttribute('viewBox',`${minx-HEX-4} ${miny-HEX-4} ${maxx-minx+2*HEX+8} ${maxy-miny+2*HEX+8}`);
+  const corners=(x,y)=>[...Array(6)].map((_,i)=>{const a=Math.PI/180*(60*i-30);return `${x+(HEX-1)*Math.cos(a)},${y+(HEX-1)*Math.sin(a)}`;}).join(' ');
+  const p=S.pending; let s='';
+  for(const [k,t] of S.tiles){
+    const {x,y}=pix(t.q,t.r), hl=p?.type==='move'&&p.opts.has(k);
+    s+=`<polygon class="hex ${hl?'hl':''}" data-k="${k}" points="${corners(x,y)}" fill="${t.obst?'#2a2420':((t.q+t.r)%2?'#3b2b20':'#36271d')}"/>`;
+    if(t.obst)s+=`<text x="${x}" y="${y+7}" text-anchor="middle" font-size="22">🪨</text>`;
+    if(hl)s+=`<text x="${x}" y="${y+5}" text-anchor="middle" font-size="12" fill="#cfc">${p.opts.get(k)}</text>`;
+  }
+  const tg=p?.type==='attack'?attackTargets():[], ht=p?.type==='heal'?healTargets():[];
+  const unit=(u,icon,col,ring,cls)=>{const {x,y}=pix(u.q,u.r),w=HEX*1.2,f=Math.max(0,u.hp/u.maxHp);
+    return `<g class="unit ${cls}" data-u="${u.id}"><circle class="ring" cx="${x}" cy="${y}" r="${HEX*0.72}" fill="${col}" stroke="${ring}" stroke-width="3"/>
+      <text x="${x}" y="${y+8}" text-anchor="middle" font-size="22">${icon}</text>
+      <rect x="${x-w/2}" y="${y+HEX*0.55}" width="${w}" height="6" fill="#200"/><rect x="${x-w/2}" y="${y+HEX*0.55}" width="${w*f}" height="6" fill="${u.cls?'#5fbf6a':'#d9472b'}"/>
+      <text x="${x+HEX*0.6}" y="${y-HEX*0.45}" font-size="11" fill="#fff" text-anchor="middle">${u.hp}</text>
+      ${u.shield?`<text x="${x-HEX*0.6}" y="${y-HEX*0.45}" font-size="11" text-anchor="middle">🛡${u.shield}</text>`:''}
+      ${u.num?`<text x="${x}" y="${y-HEX*0.5}" font-size="10" fill="#fda" text-anchor="middle">${u.num}</text>`:''}</g>`;};
+  for(const m of alive())s+=unit(m,MONSTERS[m.type].icon,m.elite?'#5a4310':'#3a1a1a',m.elite?'#e0b14a':'#777',
+    (tg.includes(m)?'tg':'')+(S.activeMon===m?' active':''));
+  for(const h of liveHeroes())s+=unit(h,h.icon,h.color,'#222',(ht.includes(h)?'ht':'')+(S.active===h?' active':''));
+  for(const f of S.floaters){const {x,y}=pix(f.q,f.r);s+=`<text class="floater" x="${x}" y="${y-10}" text-anchor="middle" fill="${f.color}">${f.text}</text>`;}
+  svg.innerHTML=s;
+}
+function renderSide(){
+  $('party').innerHTML=S.heroes.map(h=>`<div class="hero ${h.exhausted?'ex':''}"><span style="font-size:22px">${h.icon}</span>
+    <div style="flex:1"><b>${h.name}</b> <span class="small">${h.cls}</span>
+    <div style="display:flex;gap:6px;align-items:center"><div class="bar"><i style="width:${h.hp/h.maxHp*100}%"></i></div><span class="small">${h.hp}/${h.maxHp}</span></div>
+    <div class="small">手札${h.hand.length+(S.phase==='play'?h.selected.length:0)} / 捨て札${h.discard.length} / 消滅${h.lost.length}${h.exhausted?' — 疲弊':''}</div></div></div>`).join('');
+  $('order').innerHTML=S.order.length?S.order.map((e,i)=>`<div class="o ${i===S.turnIdx?'cur':i<S.turnIdx?'done':''}"><span>${e.kind==='hero'?e.ref.icon+' '+e.ref.name+(e.ref.longRest?'（長休憩）':''):MONSTERS[e.type].icon+' '+MONSTERS[e.type].name}</span><b>${e.init}</b></div>`).join(''):'<span class="small">カード選択中…</span>';
+  $('monInfo').innerHTML=Object.keys(MONSTERS).filter(t=>alive().some(m=>m.type===t)).map(t=>{
+    const c=S.mdecks[t].cur, n=MONSTERS[t].normal, e=MONSTERS[t].elite, sg=v=>v>0?'+'+v:v<0?''+v:'±0';
+    return `<div class="mon"><span>${MONSTERS[t].icon} ${MONSTERS[t].name}<br><span class="small">通常 HP${n.hp} 移${n.move} 攻${n.atk}${n.range>1?' 射'+n.range:''} / 精鋭 HP${e.hp} 攻${e.atk}${e.shield?' 盾'+e.shield:''}</span></span>
+      <span class="small" style="text-align:right">${c?`行動 ${c.i}<br>${c.move===null?'移動なし':'移動'+sg(c.move)} 攻撃${sg(c.atk)}${c.range?' 射程'+sg(c.range):''}${c.shield?' 盾+'+c.shield:''}${c.heal?' 回復'+c.heal:''}`:'—'}</span></div>`;}).join('');
+  $('log').innerHTML=S.log.map(l=>`<div>${l}</div>`).join('');
+}
+function renderCards(){
+  const el=$('cards'); let s='';
+  if(S.phase==='select'){
+    for(const h of liveHeroes()){
+      s+=`<div class="rowtitle">${h.icon} ${h.name}：${h.longRest?'長休憩を宣言中（イニシアチブ99）':`2枚選択（最初に選んだ札が先導＝イニシアチブ） ${h.selected.length}/2`}
+        ${h.discard.length>=2?`<button data-rest="${h.id}">${h.longRest?'休憩を取り消す':'長休憩する'}</button>`:''}
+        ${h.selected.length===2?`<button data-swap="${h.id}">先導を入れ替え</button>`:''}</div><div class="cardrow">`;
+      if(!h.longRest)s+=h.hand.map(c=>cardHTML(c,{cls:'click '+(h.selected.includes(c)?'sel':'')+(h.selected[0]===c?' lead':'')})).join('');
+      s+=`</div>`;
+    }
+  }else if(S.pending?.type==='rest'){
+    const h=S.active;
+    s+=`<div class="rowtitle">${h.icon} ${h.name}：消滅させるカードを1枚選んでください</div><div class="cardrow">${h.discard.map(c=>cardHTML(c,{cls:'click'})).join('')}</div>`;
+  }else if(S.active&&S.turn){
+    const h=S.active;
+    s+=`<div class="rowtitle">${h.icon} ${h.name}の手番：片方のカードの「上段」、もう片方の「下段」を使用</div><div class="cardrow">${h.selected.map(c=>cardHTML(c,{play:true})).join('')}</div>`;
+  }
+  for(const h of S.heroes.filter(h=>h.discard.length||h.lost.length)){
+    s+=`<details><summary class="small">${h.name}の捨て札(${h.discard.length})・消滅(${h.lost.length})</summary><div class="cardrow">${h.discard.map(c=>cardHTML(c)).join('')}${h.lost.map(c=>cardHTML(c,{cls:'dead'})).join('')}</div></details>`;
+  }
+  el.innerHTML=s;
+}
+function renderPrompt(){
+  const el=$('prompt'),p=S.pending; let m='',b='';
+  if(S.phase==='over'){m='ゲーム終了';b='<button class="primary" onclick="init()">もう一度</button>';}
+  else if(S.phase==='select'){
+    const ready=liveHeroes().every(h=>h.longRest||h.selected.length===2);
+    m='各英雄のカードを2枚ずつ選んでください'; b=`<button class="primary" id="go" ${ready?'':'disabled'}>ラウンド開始</button>`;
+  }else if(S.busy){m='敵の行動中…';}
+  else if(p?.type==='move'){m=`${actTxt(p.a)}：緑のマスをクリック`;b='<button id="skip">移動しない</button>';}
+  else if(p?.type==='attack'){m=`${actTxt(p.a)}：赤い輪の敵をクリック（残り${p.left===99?'':p.left}）`;b='<button id="skip">攻撃を終える</button>';}
+  else if(p?.type==='heal'){m=`${actTxt(p.a)}：緑の輪の味方をクリック`;b='<button id="skip">回復しない</button>';}
+  else if(p?.type==='rest'){m='下のカードから消滅させる1枚を選択';}
+  else if(S.turn){m=S.turn.uses.length?'もう片方のカードの反対側を選んでください':'使用するカードの段（上段/下段）を選んでください';}
+  el.innerHTML=`<span class="msg">${m}</span>${b}`;
+}
+
+/* ================= 入力 ================= */
+function findCard(uid){for(const h of S.heroes)for(const c of [...h.hand,...h.selected,...h.discard,...h.lost])if(c.uid===uid)return [h,c];return [];}
+document.addEventListener('click',e=>{
+  if(S.busy)return;
+  const t=e.target;
+  if(t.id==='go'){startRound();return;}
+  if(t.id==='skip'){skipAction();return;}
+  if(t.dataset.rest){const h=S.heroes.find(x=>x.id===t.dataset.rest);if(h.hand.length>=2||!h.longRest){h.longRest=!h.longRest;h.selected=[];}render();return;}
+  if(t.dataset.swap){const h=S.heroes.find(x=>x.id===t.dataset.swap);h.selected.reverse();render();return;}
+  if(t.dataset.alt){const [,c]=findCard(t.dataset.uid);chooseHalf(c,t.dataset.alt,true);return;}
+  const half=t.closest('[data-half]');
+  if(half){const [,c]=findCard(half.dataset.uid);chooseHalf(c,half.dataset.half,false);return;}
+  const card=t.closest('.card.click');
+  if(card){const [h,c]=findCard(card.dataset.uid);
+    if(S.phase==='select')toggleSelect(h,c); else if(S.pending?.type==='rest')restLose(c); return;}
+  const u=t.closest('[data-u]');
+  if(u){const x=[...S.heroes,...S.monsters].find(v=>v.id===u.dataset.u);if(x)clickUnit(x);return;}
+  const hex=t.closest('[data-k]'); if(hex)clickHex(hex.dataset.k);
+});
+function showModal(h){$('modalIn').innerHTML=h;$('modal').hidden=false;}
+function hideModal(){$('modal').hidden=true;}
+$('modal').addEventListener('click',e=>{if(e.target.id==='modal')hideModal();});
+$('restartBtn').onclick=()=>{if(confirm('最初からやり直しますか？'))init();};
+$('helpBtn').onclick=()=>showModal(`<h2>遊び方</h2>
+<p><b>目的：</b>マップ上の敵をすべて倒す。英雄2人が両方疲弊したら敗北。</p>
+<p><b>1. カード選択：</b>各英雄は手札から2枚選ぶ。最初に選んだ札（先導）の数字がイニシアチブ。小さいほど先に動く。</p>
+<p><b>2. 行動：</b>イニシアチブ順に英雄と敵が行動。英雄は片方のカードの<b>上段</b>、もう片方の<b>下段</b>を使う（どちらからでも可）。上段は「攻撃2」、下段は「移動2」として代わりに使うこともできる。</p>
+<p><b>3. 消滅：</b>「✖消滅」のついた段を使ったカードは二度と使えない。強力だが貴重。</p>
+<p><b>4. 休憩：</b>捨て札が2枚以上あれば長休憩を宣言できる（イニシアチブ99）。HP+2、捨て札を1枚選んで消滅させ、残りを手札に戻す。</p>
+<p><b>5. 疲弊：</b>手札も捨て札も2枚未満になるか、HPが0になると英雄は脱落。<b>カードはそのまま寿命</b>——急ぎすぎても、休みすぎても負ける。</p>
+<p><b>攻撃修正デッキ：</b>攻撃のたびに +0/±1/±2/×2/ミス を引く。×2かミスを引いたらラウンド終了時にシャッフル。</p>
+<p><b>敵：</b>種類ごとに行動カードを引き、最も近い英雄を狙って攻撃できる位置へ移動する。金縁は精鋭。</p>
+<button class="primary" onclick="hideModal()">閉じる</button>`);
+init();
+</script>
+</body>
+</html>
